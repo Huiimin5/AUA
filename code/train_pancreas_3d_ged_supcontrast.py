@@ -18,7 +18,7 @@ import torch.backends.cudnn as cudnn
 from torch.utils.data import DataLoader
 from torchvision.utils import make_grid
 
-from networks.stochastic_vnet import StochasticVNetSupCon, StochasticVNetSupCon_noout
+from networks.stochastic_vnet import StochasticVNetSupCon
 from dataloaders import utils
 from utils import ramps, losses
 import torchio
@@ -66,7 +66,6 @@ parser.add_argument('--random_sampled_num', type=int,  default=1000, help='rando
 parser.add_argument('--sup_cont_rampdown', type=float,  default=40, help='sup_cont_rampdown')
 parser.add_argument('--sup_cont_rampdown_scheme', type=str,  default='None', help='sup_cont_rampdown_scheme')
 parser.add_argument('--oversample_ratio', type=int,  default=3, help='oversample_ratio')
-parser.add_argument('--importance_sample_ratio', type=float,  default=0.75, help='importance_sample_ratio')
 parser.add_argument('--cross_image_sampling', type=str2bool,  default=False, help='cross_image_sampling')
 parser.add_argument('--head_normalization', type=str,  default='none', help='head_normalization')
 parser.add_argument('--head_layer_num', type=int,  default=3, help='head_layer_num')
@@ -93,10 +92,6 @@ parser.add_argument('--ssn_rank', type=int,  default=10, help='ssn rank')
 parser.add_argument('--pairwise_dist_metric', type=str,  default='dice', help='ssn rank')
 parser.add_argument('--oracle_checking', type=str2bool,  default=False, help='oracle_checking')
 parser.add_argument('--with_uncertainty_mask', type=str2bool,  default=False, help='with_uncertainty_mask')
-# ablation study parameters for uncertianty mask
-parser.add_argument('--cov_diag_consistency_weight', type=float,  default=1, help='cov_diag_consistency_weight')
-parser.add_argument('--cov_factor_consistency_weight', type=float,  default=1, help='cov_factor_consistency_weight')
-
 
 # ablation study parameters for generalized energy distance
 parser.add_argument('--weight_div1', type=float,  default=1, help='weight for diversity1 in loss function')
@@ -143,9 +138,7 @@ with_uncertainty_mask = args.with_uncertainty_mask
 perturbation_weight_feature_ema = args.perturbation_weight_feature_ema
 uniform_range = args.uniform_range
 num_feature_perturbated = args.num_feature_perturbated
-# ablation study parameters for uncertainty estimation
-cov_diag_consistency_weight = args.cov_diag_consistency_weight
-cov_factor_consistency_weight = args.cov_factor_consistency_weight
+
 # ablation study parameters for generalized energy distance
 weight_div1 = args.weight_div1
 weight_div2 = args.weight_div2
@@ -193,18 +186,6 @@ def get_sup_cont_weight(epoch, weight):
         return weight * ramps.quadratic_rampdown(epoch, args.sup_cont_rampdown)
     elif args.sup_cont_rampdown_scheme == 'cosine_rampdown':
         return weight * ramps.cosine_rampdown(epoch, args.sup_cont_rampdown)
-    else:
-        return weight
-
-def get_unsup_cont_weight(epoch, weight, scheme = args.unsup_cont_rampup_scheme, ramp_up = args.unsup_cont_rampup):
-    if  scheme == 'sigmoid_rampup':
-        return weight * ramps.sigmoid_rampup(epoch, ramp_up)
-    elif scheme == 'linear_rampup':
-        return weight * ramps.linear_rampup(epoch, ramp_up)
-    elif scheme == 'log_rampup':
-        return weight * ramps.log_rampup(epoch, ramp_up)
-    elif scheme == 'exp_rampup':
-        return weight * ramps.exp_rampup(epoch, ramp_up)
     else:
         return weight
 
@@ -315,11 +296,7 @@ if __name__ == "__main__":
 
     def create_model(ema=False):
         # Network definition
-        if args.baseline_noout:
-            net = StochasticVNetSupCon_noout(input_channels=1, num_classes=num_classes, normalization=bn_type, has_dropout=True, rank=ssn_rank,
-                                             head_normalization=args.head_normalization, head_layer_num=args.head_layer_num)
-        else:
-            net = StochasticVNetSupCon(input_channels=1, num_classes=num_classes, normalization=bn_type, has_dropout=True,
+        net = StochasticVNetSupCon(input_channels=1, num_classes=num_classes, normalization=bn_type, has_dropout=True,
                                  rank=ssn_rank, head_normalization=args.head_normalization, head_layer_num=args.head_layer_num)
         model = net.cuda()
         if ema:
@@ -370,7 +347,6 @@ if __name__ == "__main__":
 
     labeled_idxs = list(range(args.labeled_num))
     unlabeled_idxs = list(range(args.labeled_num, args.total_num))
-    # batch_sampler = TwoStreamBatchSampler(labeled_idxs, unlabeled_idxs, batch_size, batch_size-labeled_bs,args.sampler_fixed)
     labeled_batch_sampler = LabeledBatchSampler(labeled_idxs, labeled_bs,args.sampler_fixed)
     unlabeled_batch_sampler = UnlabeledBatchSampler(unlabeled_idxs, batch_size - labeled_bs,args.sampler_fixed)
 
@@ -762,7 +738,7 @@ if __name__ == "__main__":
             if iter_num % 1000 == 0:
                 save_mode_path = os.path.join(snapshot_path, 'iter_' + str(iter_num) + '.pth')
                 torch.save({'model': model.state_dict(), 'ema_model': ema_model.state_dict(),
-                            'ssn_rank': ssn_rank, 'max_iterations': max_iterations, 'bn_type': bn_type, 'baseline_noout': args.baseline_noout,
+                            'ssn_rank': ssn_rank, 'max_iterations': max_iterations, 'bn_type': bn_type,
                             'head_normalization':args.head_normalization, 'head_layer_num': args.head_layer_num}, save_mode_path)
                 logging.info("save model to {}".format(save_mode_path))
 
@@ -773,7 +749,7 @@ if __name__ == "__main__":
             break
     save_mode_path = os.path.join(snapshot_path, 'iter_'+str(max_iterations)+'.pth')
     torch.save({'model': model.state_dict(), 'ema_model': ema_model.state_dict(),
-                'ssn_rank': ssn_rank, 'max_iterations': max_iterations, 'bn_type': bn_type, 'baseline_noout':args.baseline_noout,
+                'ssn_rank': ssn_rank, 'max_iterations': max_iterations, 'bn_type': bn_type,
                 'head_normalization':args.head_normalization, 'head_layer_num': args.head_layer_num}, save_mode_path)
     logging.info("save model to {}".format(save_mode_path))
     writer.close()
