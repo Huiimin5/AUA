@@ -20,7 +20,7 @@ This repository is based on PyTorch 1.6.0.
 
 ## Usage
 Please clone the repository and refer to run.sh for training and testing scripts.
-
+Our [trained models](https://github.com/Huiimin5/AUA/tree/main/model) are released.
 ## Citation
 If this work is helpful in your research, please consider citing
 @article{wu2021exploring,
