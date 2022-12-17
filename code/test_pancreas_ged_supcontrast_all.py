@@ -8,7 +8,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('--root_path', type=str, default='../data_3items/Pancreas-CT-test/', help='Name of Experiment')
 parser.add_argument('--model', type=str,  default='', help='model_name')
 parser.add_argument('--gpu', type=str,  default='0', help='GPU to use')
-parser.add_argument('--iter', type=int,  default=5000, help='model iteration')
+parser.add_argument('--pth_name', type=str,  default="aua_pancreas_20p.pth", help='model iteration')
 parser.add_argument('--ssn_rank', type=int,  default=10, help='ssn rank')
 parser.add_argument('--maxiter', type=int,  default=6000, help='model iteration')
 
@@ -26,8 +26,8 @@ with open(FLAGS.root_path + '/../pancreas_test.list', 'r') as f:
 image_list = [FLAGS.root_path +item.replace('\n', '')+"/mri_norm2.h5" for item in image_list]
 
 
-def test_calculate_metric(epoch_num):
-    save_mode_path = os.path.join(snapshot_path, 'iter_' + str(epoch_num) + '.pth')
+def test_calculate_metric():
+    save_mode_path = os.path.join(snapshot_path, FLAGS.pth_name)
     checkpoint = torch.load(save_mode_path)
     ssn_rank = checkpoint['ssn_rank']
     bn_type = checkpoint['bn_type']
@@ -49,9 +49,6 @@ def test_calculate_metric(epoch_num):
 
 
 if __name__ == '__main__':
-    for iter_id in range(FLAGS.maxiter // 1000):
-        iteration = (iter_id + 1) * 1000
-        print('performance of iteration {}'.format(iteration))
-        metric = test_calculate_metric(iteration)
-        print(metric)
+    metric = test_calculate_metric()
+    print(metric)
 
