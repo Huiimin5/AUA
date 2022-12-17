@@ -23,12 +23,14 @@ Please clone the repository and refer to run.sh for training and testing scripts
 Our [trained models](https://github.com/Huiimin5/AUA/tree/main/model) are released.
 ## Citation
 If this work is helpful in your research, please consider citing
+```
 @article{wu2021exploring,
   title={Exploring Feature Representation Learning for Semi-supervised Medical Image Segmentation},
   author={Wu, Huimin and Li, Xiaomeng and Cheng, Kwang-Ting},
   journal={arXiv preprint arXiv:2111.10989},
   year={2021}
 }
+```
 
 ## Acknowledgement
 We would like to thank following open-source projects:
