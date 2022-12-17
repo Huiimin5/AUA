@@ -15,7 +15,7 @@ adavantage of image ambiguity, which, given its signiﬁcance, is
 under-explored by existing works. Our method achieves the best 
 results on three public medical image segmentation benchmarks.
 
-# Installation
+## Installation
 This repository is based on PyTorch 1.6.0.
 
 ## Usage
